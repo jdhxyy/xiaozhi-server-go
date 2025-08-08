@@ -11,3 +11,10 @@ wake_replay
 .env
 config.db
 /ota_bin
+# 忽略 .idea 目录
+/.idea
+# 忽略 .vscode 目录
+/.vscode
+/.vercel
+/代码分析
+/music
