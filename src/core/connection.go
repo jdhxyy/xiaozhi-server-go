@@ -729,7 +729,44 @@ func (h *ConnectionHandler) handleFunctionResult(result types.ActionResponse, fu
 		h.LogInfo(fmt.Sprintf("函数调用直接回复: %v", result.Response))
 		h.SystemSpeak(result.Response.(string))
 	case types.ActionTypeCallHandler:
+		h.LogInfo(fmt.Sprintf("------->11111 函数调用后请求LLM: %v", result.Result))
 		h.handleMCPResultCall(result)
+		
+		h.LogInfo(fmt.Sprintf("------->22222 函数调用后请求LLM: %v", result.Result))
+
+		functionID := functionCallData["id"].(string)
+		functionName := functionCallData["name"].(string)
+		functionArguments := functionCallData["arguments"].(string)
+		h.LogInfo(fmt.Sprintf("函数调用参数: %s", functionArguments))
+		h.LogInfo(fmt.Sprintf("函数调用名称: %s", functionName))
+		h.LogInfo(fmt.Sprintf("函数调用ID: %s", functionID))
+
+		if functionName == "local_play_music" {
+			// 针对music的特殊处理,解决播放音乐时打断后继续播放音乐的bug
+			h.dialogueManager.Put(chat.Message{
+				Role: "assistant",
+				ToolCalls: []types.ToolCall{{
+					ID: functionID,
+					Function: types.FunctionCall{
+						Arguments: functionArguments,
+						Name:      functionName,
+					},
+					Type:  "function",
+					Index: 0,
+				}},
+			})
+
+			// 添加 tool 消息
+			toolCallID := functionID
+			if toolCallID == "" {
+				toolCallID = uuid.New().String()
+			}
+			h.dialogueManager.Put(chat.Message{
+				Role:       "tool",
+				ToolCallID: toolCallID,
+				Content:    "play music success",
+			})
+		}
 	case types.ActionTypeReqLLM:
 		h.LogInfo(fmt.Sprintf("函数调用后请求LLM: %v", result.Result))
 		text, ok := result.Result.(string)
