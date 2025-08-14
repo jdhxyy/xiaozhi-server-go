@@ -469,6 +469,26 @@ func SaveAudioFile(data []byte, filename string) error {
 	return nil
 }
 
+// AppendAudioFile 追加音频数据到文件
+func AppendAudioFile(data []byte, filename string) error {
+	dir := filepath.Dir(filename)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("创建目录失败: %v", err)
+	}
+
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("打开文件失败: %v", err)
+	}
+	defer f.Close()
+
+	if _, err := f.Write(data); err != nil {
+		return fmt.Errorf("追加音频数据失败: %v", err)
+	}
+
+	return nil
+}
+
 // PCMToOpusData 将PCM数据编码为Opus格式
 func PCMToOpusData(pcmData []byte, sampleRate int, channels int) ([]byte, error) {
 	if len(pcmData) == 0 {

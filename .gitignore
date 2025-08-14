@@ -18,3 +18,6 @@ config.db
 /.vercel
 /代码分析
 /music
+/music-kb
+*.exe
+/music-opus

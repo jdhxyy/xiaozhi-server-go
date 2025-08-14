@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+	"xiaozhi-server-go/src/core/kb"
 
 	"xiaozhi-server-go/src/configs"
 	"xiaozhi-server-go/src/configs/database"
@@ -229,6 +230,9 @@ func main() {
 		fmt.Println("加载配置或初始化日志系统失败:", err)
 		os.Exit(1)
 	}
+
+	s, _ := kb.Search("周杰伦的歌曲", 2)
+	fmt.Println(s)
 
 	// 加载 .env 文件
 	err = godotenv.Load()

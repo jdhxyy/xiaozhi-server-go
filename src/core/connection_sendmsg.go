@@ -1,8 +1,12 @@
 package core
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 	"xiaozhi-server-go/src/core/utils"
@@ -145,6 +149,184 @@ func (h *ConnectionHandler) sendAudioMessage(filepath string, text string, textI
 		if err != nil {
 			h.LogError(fmt.Sprintf("音频转Opus失败: %v", err))
 			return
+		}
+	}
+
+	// 发送TTS状态开始通知
+	if err := h.sendTTSMessage("sentence_start", text, textIndex); err != nil {
+		h.LogError(fmt.Sprintf("发送TTS开始状态失败: %v", err))
+		return
+	}
+
+	if textIndex == 1 {
+		now := time.Now()
+		spentTime := now.Sub(h.roundStartTime)
+		h.logger.Debug("回复首句耗时 %s 第一句话【%s】, round: %d", spentTime, text, round)
+	}
+	h.logger.Debug("TTS发送(%s): \"%s\" (索引:%d/%d，时长:%f，帧数:%d)", h.serverAudioFormat, text, textIndex, h.tts_last_text_index, duration, len(audioData))
+
+	// 分时发送音频数据
+	if err := h.sendAudioFrames(audioData, text, round); err != nil {
+		h.LogError(fmt.Sprintf("分时发送音频数据失败: %v", err))
+		return
+	}
+
+	// 发送TTS状态结束通知
+	if err := h.sendTTSMessage("sentence_end", text, textIndex); err != nil {
+		h.LogError(fmt.Sprintf("发送TTS结束状态失败: %v", err))
+		return
+	}
+
+	bFinishSuccess = true
+}
+
+func (h *ConnectionHandler) sendMusic(songFilepath string, text string, textIndex int, round int) {
+	bFinishSuccess := false
+	defer func() {
+		// 音频发送完成后，根据配置决定是否删除文件
+		h.deleteAudioFileIfNeeded(songFilepath, "音频发送完成")
+
+		h.LogInfo(fmt.Sprintf("TTS音频发送任务结束(%t): %s, 索引: %d/%d", bFinishSuccess, text, textIndex, h.tts_last_text_index))
+		h.providers.asr.ResetStartListenTime()
+		if textIndex == h.tts_last_text_index {
+			h.sendTTSMessage("stop", "", textIndex)
+			if h.closeAfterChat {
+				h.Close()
+			} else {
+				h.clearSpeakStatus()
+			}
+		}
+	}()
+
+	if len(songFilepath) == 0 {
+		return
+	}
+	// 检查轮次
+	if round != h.talkRound {
+		h.LogInfo(fmt.Sprintf("sendAudioMessage: 跳过过期轮次的音频: 任务轮次=%d, 当前轮次=%d, 文本=%s",
+			round, h.talkRound, text))
+		// 即使跳过，也要根据配置删除音频文件
+		h.deleteAudioFileIfNeeded(songFilepath, "跳过过期轮次")
+		return
+	}
+
+	if atomic.LoadInt32(&h.serverVoiceStop) == 1 { // 服务端语音停止
+		h.LogInfo(fmt.Sprintf("sendAudioMessage 服务端语音停止, 不再发送音频数据：%s", text))
+		// 服务端语音停止时也要根据配置删除音频文件
+		h.deleteAudioFileIfNeeded(songFilepath, "服务端语音停止")
+		return
+	}
+
+	var audioData [][]byte
+	var duration float64
+	var err error
+
+	// 使用TTS提供者的方法将音频转为Opus格式
+	if h.serverAudioFormat == "pcm" {
+		h.LogInfo("服务端音频格式为PCM，直接发送")
+		audioData, duration, err = utils.AudioToPCMData(songFilepath)
+		if err != nil {
+			h.LogError(fmt.Sprintf("音频转PCM失败: %v", err))
+			return
+		}
+	} else if h.serverAudioFormat == "opus" {
+		// 提取文件名（不含扩展名）
+		filename := filepath.Base(songFilepath)
+		filenameWithoutExt := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+		// 构造opus文件路径
+		opusDir := filepath.Join("", "music-opus")
+		opusFilePath := filepath.Join(opusDir, filenameWithoutExt+"_.opus")
+		durationFilePath := filepath.Join(opusDir, filenameWithoutExt+"_.duration")
+
+		// 检查opus文件是否存在
+		if _, err := os.Stat(opusFilePath); os.IsNotExist(err) {
+			// 文件不存在，调用转换函数
+			audioData, duration, err = utils.AudioToOpusData(songFilepath)
+			if err != nil {
+				h.LogError(fmt.Sprintf("音频转Opus失败: %v", err))
+				return
+			}
+
+			// 确保music-opus目录存在
+			if err := os.MkdirAll(opusDir, 0755); err != nil {
+				h.LogError(fmt.Sprintf("创建opus目录失败: %v", err))
+			} else {
+				// 保存全部opus数据到文件（带长度信息）
+				for i, data := range audioData {
+					// 准备包含长度信息的数据
+					lengthBytes := make([]byte, 4)
+					binary.LittleEndian.PutUint32(lengthBytes, uint32(len(data)))
+					dataWithLength := append(lengthBytes, data...)
+
+					if i == 0 {
+						// 第一次写入，创建或覆盖文件
+						if err := utils.SaveAudioFile(dataWithLength, opusFilePath); err != nil {
+							h.LogError(fmt.Sprintf("保存Opus文件失败: %v", err))
+						}
+					} else {
+						// 后续写入，追加到文件
+						if err := utils.AppendAudioFile(dataWithLength, opusFilePath); err != nil {
+							h.LogError(fmt.Sprintf("追加Opus文件失败: %v", err))
+						}
+					}
+				}
+
+				// 保存duration到文件
+				durationFile, err := os.Create(durationFilePath)
+				if err != nil {
+					h.LogError(fmt.Sprintf("创建duration文件失败: %v", err))
+				} else {
+					fmt.Fprintf(durationFile, "%f", duration)
+					durationFile.Close()
+				}
+			}
+		} else {
+			// 文件存在，直接读取
+			opusData, err := os.ReadFile(opusFilePath)
+			if err != nil {
+				h.LogError(fmt.Sprintf("读取Opus文件失败: %v", err))
+				return
+			}
+
+			// 从文件中读取带长度信息的opus数据
+			audioData = [][]byte{}
+			offset := 0
+			dataLen := len(opusData)
+
+			for offset < dataLen {
+				// 读取长度信息（4字节）
+				if offset+4 > dataLen {
+					h.LogError("Opus文件格式错误：缺少足够的长度信息")
+					break
+				}
+
+				length := int(binary.LittleEndian.Uint32(opusData[offset:offset+4]))
+				offset += 4
+
+				// 读取数据
+				if offset+length > dataLen {
+					h.LogError("Opus文件格式错误：数据长度不足")
+					break
+				}
+
+				data := opusData[offset:offset+length]
+				audioData = append(audioData, data)
+				offset += length
+			}
+
+			// 如果解析后的帧数量为0，则使用原始数据作为备选
+			if len(audioData) == 0 {
+				audioData = [][]byte{opusData}
+			}
+
+			// 读取duration
+			durationData, err := os.ReadFile(durationFilePath)
+			if err != nil {
+				h.LogError(fmt.Sprintf("读取duration文件失败: %v", err))
+				return
+			}
+			fmt.Sscanf(string(durationData), "%f", &duration)
 		}
 	}
 

@@ -152,24 +152,51 @@ func (c *LocalClient) AddToolPlayMusic() error {
 	InputSchema := ToolInputSchema{
 		Type: "object",
 		Properties: map[string]any{
-			"song_name": map[string]any{
+			"song_requirement": map[string]any{
 				"type":        "string",
-				"description": "歌曲名称，如果用户没有指定具体歌名则为'random', 明确指定的时返回音乐的名字 示例: ```用户:播放两只老虎\n参数：两只老虎``` ```用户:播放音乐 \n参数：random ```",
+				"description": "歌曲要求，可包含具体歌曲名、歌手、音乐风格、场景、心情、乐器等信息。示例: ```用户:播放周杰伦的歌曲 参数：周杰伦的歌曲``` ```用户:播放适合放松的钢琴音乐 参数：放松的钢琴曲```",
 			},
 		},
-		Required: []string{"song_name"},
+		Required: []string{"song_requirement"},
 	}
 
 	c.AddTool("play_music",
-		"当用户想要播放音乐/听歌/唱歌时调用",
+		"音乐播放工具。当用户想要播放指定歌曲时调用",
 		InputSchema,
 		func(ctx context.Context, args map[string]any) (interface{}, error) {
-			song_name := args["song_name"].(string)
+			song_requirement := args["song_requirement"].(string)
 			res := types.ActionResponse{
 				Action: types.ActionTypeCallHandler, // 动作类型
 				Result: types.ActionResponseCall{
 					FuncName: "mcp_handler_play_music", // 函数名
-					Args:     song_name,                // 函数参数
+					Args:     song_requirement,                // 函数参数
+				},
+			}
+			return res, nil
+		})
+	
+	InputSchemaSearch := ToolInputSchema{
+		Type: "object",
+		Properties: map[string]any{
+			"song_requirement": map[string]any{
+				"type":        "string",
+				"description": "歌曲要求，可包含具体歌曲名、歌手、音乐风格、场景、心情、乐器等信息。示例: ```用户:播放周杰伦的歌曲 参数：周杰伦的歌曲``` ```用户:播放适合放松的钢琴音乐 参数：放松的钢琴曲```",
+			},
+		},
+		Required: []string{"song_requirement"},
+	}
+
+	c.AddTool("search_music",
+		"音乐库搜索工具。当用户想要推荐歌曲/搜索歌曲时调用，会根据用户的要求搜索音乐库，返回符合要求的歌曲列表",
+
+		InputSchemaSearch,
+		func(ctx context.Context, args map[string]any) (interface{}, error) {
+			song_requirement := args["song_requirement"].(string)
+			res := types.ActionResponse{
+				Action: types.ActionTypeCallHandler, // 动作类型
+				Result: types.ActionResponseCall{
+					FuncName: "mcp_handler_search_music", // 函数名
+					Args:     song_requirement,           // 函数参数
 				},
 			}
 			return res, nil
