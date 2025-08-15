@@ -61,13 +61,13 @@ func Add(jsonStr string) error {
 }
 
 // Search 搜索知识库
-func Search(query string, nResults int) ([]string, error) {
+func Search(query string, nResults int) ([]Song, error) {
 	res, err := gCollection.Query(gCtx, query, nResults, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var docs []string
+	var docs []Song
 	for _, v := range res {
 		// if v.Similarity < SimilarityThreshold {
 		// 	continue
@@ -77,7 +77,7 @@ func Search(query string, nResults int) ([]string, error) {
 		if err != nil {
 			continue
 		}
-		docs = append(docs, s.Title)
+		docs = append(docs, *s)
 	}
 	return docs, nil
 }

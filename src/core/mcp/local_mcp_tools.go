@@ -4,7 +4,9 @@ import (
 	"context"
 	"strings"
 	"time"
+	"xiaozhi-server-go/src/core/kb"
 	"xiaozhi-server-go/src/core/types"
+	"fmt"
 )
 
 func (c *LocalClient) AddToolExit() error {
@@ -182,8 +184,12 @@ func (c *LocalClient) AddToolPlayMusic() error {
 				"type":        "string",
 				"description": "歌曲要求，可包含具体歌曲名、歌手、音乐风格、场景、心情、乐器等信息。示例: ```用户:播放周杰伦的歌曲 参数：周杰伦的歌曲``` ```用户:播放适合放松的钢琴音乐 参数：放松的钢琴曲```",
 			},
+			"song_num": map[string]any{
+				"type":        "int",
+				"description": "歌曲数量，默认返回3首",
+			},
 		},
-		Required: []string{"song_requirement"},
+		Required: []string{"song_requirement", "song_num"},
 	}
 
 	c.AddTool("search_music",
@@ -192,12 +198,33 @@ func (c *LocalClient) AddToolPlayMusic() error {
 		InputSchemaSearch,
 		func(ctx context.Context, args map[string]any) (interface{}, error) {
 			song_requirement := args["song_requirement"].(string)
+			song_num := int(args["song_num"].(float64))
+
+			c.logger.Info("search_music: %s, num: %d", song_requirement, song_num)
+
+			responseResult := ""
+			songs, err := kb.Search(song_requirement, song_num)
+			if err != nil || len(songs) == 0 {
+				c.logger.Error("search_music: Search failed: %v", err)
+				responseResult = "搜索音乐失败"
+			} else {
+				// 拼接歌曲信息
+				var songList strings.Builder
+				for i, song := range songs {
+					if i > 0 {
+						songList.WriteString("\n")
+					}
+					// 假设歌曲结构体有Title和Artist字段
+					songList.WriteString(fmt.Sprintf("%d. %s - %s", i+1, song.Title, song.Artist))
+				}
+				responseResult = songList.String()
+			}
+
+			c.logger.Info("search_music result: %s", responseResult)
+
 			res := types.ActionResponse{
-				Action: types.ActionTypeCallHandler, // 动作类型
-				Result: types.ActionResponseCall{
-					FuncName: "mcp_handler_search_music", // 函数名
-					Args:     song_requirement,           // 函数参数
-				},
+				Action: types.ActionTypeReqLLM, // 动作类型
+				Result: responseResult,                    // 函数参数
 			}
 			return res, nil
 		})

@@ -68,26 +68,26 @@ func TestCase1(t *testing.T) {
 
 
 func TestCase2(t *testing.T) {
-	if IsSongExist("歌曲标题是 十年") == true {
+	if IsSongExist("歌曲标题是 珍惜 苏有朋") == true {
 		fmt.Println("歌曲已存在")
 		return
 	}
 
 	// 创建一个JSON字符串
 	songJSON := `{
-		"title": "十年-陈奕迅",
-		"artist": "陈奕迅",
-		"album": "黑·白·灰",
-		"duration": 295,
-		"release_year": 2003,
-		"language": "中文",
-		"theme": "爱情、回忆",
+		"title": "珍惜 苏有朋",
+		"artist": "苏有朋",
+		"album": "珍惜的背包",
+		"duration": 240,
+		"release_year": 1994,
+		"language": "国语",
+		"theme": "爱情、珍惜、怀旧",
 		"genre": "流行",
-		"style": "抒情流行",
-		"vocal_type": "独唱",
-		"mood_tags": ["深情", "怀旧", "伤感"],
-		"scenario_tags": ["离别场景", "回忆时刻", "深夜聆听"],
-		"cultural_tags": ["都市情感", "当代流行文化"]
+		"style": "Mandarin Pop、90年代流行",
+		"vocal_type": "男声独唱",
+		"mood_tags": ["深情", "怀旧", "温暖"],
+		"scenario_tags": ["情感表达", "回忆场景", "抒情时刻"],
+		"cultural_tags": ["90年代华语流行", "台湾流行音乐", "经典情歌"]
 	}`
 
 	// 调用Add函数
