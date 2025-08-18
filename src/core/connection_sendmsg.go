@@ -186,9 +186,8 @@ func (h *ConnectionHandler) sendAudioMessage(filepath string, text string, textI
 func (h *ConnectionHandler) sendMusic(songFilepaths []string, texts []string, textIndex int, round int) {
 	// 初始化随机数生成器
 	rand.Seed(time.Now().UnixNano())
-	bFinishSuccess := false
 	defer func() {
-		h.LogInfo(fmt.Sprintf("music音频发送任务结束(%t): 索引: %d/%d", bFinishSuccess, textIndex, h.tts_last_text_index))
+		h.LogInfo(fmt.Sprintf("music音频发送任务结束: 索引: %d/%d", textIndex, h.tts_last_text_index))
 		h.providers.asr.ResetStartListenTime()
 		if textIndex == h.tts_last_text_index {
 			h.sendTTSMessage("stop", "", textIndex)
@@ -300,8 +299,6 @@ func (h *ConnectionHandler) sendMusic(songFilepaths []string, texts []string, te
 			continue
 		}
 	}
-
-	bFinishSuccess = true
 }
 
 func getAudioData(songFilepath string, h *ConnectionHandler) (audioData [][]byte, duration float64, err error) {

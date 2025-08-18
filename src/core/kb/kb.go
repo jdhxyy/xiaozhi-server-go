@@ -3,16 +3,18 @@ package kb
 import (
 	"context"
 	"fmt"
+	"runtime"
+
 	"github.com/google/uuid"
 	"github.com/philippgille/chromem-go"
-	"runtime"
 )
 
 const (
 	// KBPath = "../../../music-kb"
-	KBPath         = "music-kb"
-	CollectionName = "song"
+	KBPath              = "music-kb"
+	CollectionName      = "song"
 	SimilarityThreshold = 0.6
+	OllamaURL           = "http://127.0.0.1:11434/api"
 )
 
 var gCtx context.Context
@@ -29,10 +31,12 @@ func init() {
 		panic(err)
 	}
 
-	// 配置Ollama嵌入函数
-	ollamaURL := "http://localhost:11434/api"
-	embeddingModelName := "bge-m3:latest" // 嵌入模型
-	embeddingFunc := chromem.NewEmbeddingFuncOllama(embeddingModelName, ollamaURL)
+	// // 配置Ollama嵌入函数
+	// ollamaURL := OllamaURL
+	// embeddingModelName := "bge-m3:latest" // 嵌入模型
+	// embeddingFunc := chromem.NewEmbeddingFuncOllama(embeddingModelName, ollamaURL)
+
+	embeddingFunc := chromem.NewEmbeddingFuncOpenAICompat("https://dashscope.aliyuncs.com/compatible-mode/v1", "sk-e8690fae27c4479a8718f71ebe20177d", "text-embedding-v4", nil)
 
 	// 创建集合
 	gCollection = gDB.GetCollection(CollectionName, embeddingFunc)

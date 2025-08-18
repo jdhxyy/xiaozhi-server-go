@@ -99,3 +99,13 @@ func TestCase2(t *testing.T) {
 
 	fmt.Println("文档添加成功！")
 }
+
+func TestCase3(t *testing.T) {
+	docs, err := Search("中国风的歌曲", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range docs {
+		fmt.Println(v)
+	}
+}

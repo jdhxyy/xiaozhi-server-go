@@ -48,7 +48,7 @@ func (h *ConnectionHandler) handleMCPResultCall(result types.ActionResponse) {
 func (h *ConnectionHandler) mcp_handler_play_music(args interface{}) {
 	if songRequirement, ok := args.(string); ok {
 		h.logger.Info("mcp_handler_play_music: %s", songRequirement)
-		songs, err := kb.Search(songRequirement, 3)
+		songs, err := kb.Search(songRequirement, 10)
 		if err != nil || len(songs) == 0 {
 			h.logger.Error("mcp_handler_search_music: Search failed: %v", err)
 			h.SystemSpeak("搜索音乐失败")

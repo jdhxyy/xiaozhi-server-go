@@ -17,10 +17,12 @@ type Song struct {
 	ReleaseYear     int      `json:"release_year"`
 	Language        string   `json:"language"`
 	Theme           string   `json:"theme"`
-	EmotionTags     []string `json:"emotion_tags"`
 	Genre           string   `json:"genre"`
 	SubGenre        string   `json:"sub_genre"`
+	VocalType       string   `json:"vocal_type"`
+	MoodTags        []string `json:"mood_tags"`
 	SceneTags       []string `json:"scene_tags"`
+	LocationTags    []string `json:"location_tags"`
 	CulturalTags    []string `json:"cultural_tags"`
 	PerformanceForm string   `json:"performance_form"`
 }
@@ -32,30 +34,6 @@ func (s *Song) ToJSON() (string, error) {
 		return "", fmt.Errorf("failed to marshal song to JSON: %w", err)
 	}
 	return string(data), nil
-}
-
-// NewSong 创建一个新的 Song 实例
-func NewSong(
-	songID, title, artist, album string,
-	duration, releaseYear int,
-	language, theme, genre, subGenre, performanceForm string,
-	emotionTags, sceneTags, culturalTags []string,
-) *Song {
-	return &Song{
-		Title:           title,
-		Artist:          artist,
-		Album:           album,
-		Duration:        duration,
-		ReleaseYear:     releaseYear,
-		Language:        language,
-		Theme:           theme,
-		EmotionTags:     emotionTags,
-		Genre:           genre,
-		SubGenre:        subGenre,
-		SceneTags:       sceneTags,
-		CulturalTags:    culturalTags,
-		PerformanceForm: performanceForm,
-	}
 }
 
 // FromJSON 将 JSON 字符串转换为 Song 结构体
