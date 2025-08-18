@@ -270,14 +270,14 @@ func (h *ConnectionHandler) sendMusic(songFilepaths []string, texts []string, te
 		// 使用TTS提供者的方法将音频转为Opus格式
 		audioData, duration, err = getAudioData(songFilepath, h)
 		if err != nil {
-			h.LogError(fmt.Sprintf("获取音频数据失败: %v", err))
+			h.LogError(fmt.Sprintf("sendMusic: 获取音频数据失败: %v", err))
 			continue // 出错时跳过当前歌曲，继续播放下一首
 		}
 
 		// 发送TTS状态开始通知
 		if err := h.sendTTSMessage("sentence_start", text, textIndex); err != nil {
-			h.LogError(fmt.Sprintf("发送TTS开始状态失败: %v", err))
-			continue
+			h.LogError(fmt.Sprintf("sendMusic: 发送TTS开始状态失败: %v", err))
+			break
 		}
 
 		if textIndex == 1 {
@@ -289,14 +289,14 @@ func (h *ConnectionHandler) sendMusic(songFilepaths []string, texts []string, te
 
 		// 分时发送音频数据
 		if err := h.sendAudioFrames(audioData, text, round); err != nil {
-			h.LogError(fmt.Sprintf("分时发送音频数据失败: %v", err))
+			h.LogError(fmt.Sprintf("sendMusic: 分时发送音频数据失败: %v", err))
 			continue
 		}
 
 		// 发送TTS状态结束通知
 		if err := h.sendTTSMessage("sentence_end", text, textIndex); err != nil {
-			h.LogError(fmt.Sprintf("发送TTS结束状态失败: %v", err))
-			continue
+			h.LogError(fmt.Sprintf("sendMusic:发送TTS结束状态失败: %v", err))
+			break
 		}
 	}
 }
