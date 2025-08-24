@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 	"xiaozhi-server-go/src/core/kb"
+	"xiaozhi-server-go/src/configs"
 	"xiaozhi-server-go/src/core/types"
 	"fmt"
 )
 
 func (c *LocalClient) AddToolExit() error {
-
 	InputSchema := ToolInputSchema{
 		Type: "object",
 		Properties: map[string]any{
@@ -41,7 +41,6 @@ func (c *LocalClient) AddToolExit() error {
 }
 
 func (c *LocalClient) AddToolTime() error {
-
 	InputSchema := ToolInputSchema{
 		Type:       "object",
 		Properties: map[string]any{},
@@ -71,7 +70,9 @@ func (c *LocalClient) AddToolChangeRole() error {
 	prompts := map[string]string{}
 	roleNames := ""
 	if roles == nil {
-		c.logger.Warn("AddToolChangeRole: roles settings is nil or empty, Skipping tool registration")
+		c.logger.Warn(
+			"AddToolChangeRole: roles settings is nil or empty, Skipping tool registration",
+		)
 		return nil
 	} else {
 		for _, role := range roles {
@@ -114,12 +115,15 @@ func (c *LocalClient) AddToolChangeRole() error {
 }
 
 func (c *LocalClient) AddToolChangeVoice() error {
-
-	voices := []string{}
+	voices := []configs.VoiceInfo{}
 	if ttsType, ok := c.cfg.SelectedModule["TTS"]; ok && ttsType != "" {
-		voices = c.cfg.TTS[ttsType].SurportedVoices
+		voices = c.cfg.TTS[ttsType].SupportedVoices
 	}
-	voiceDes := strings.Join(voices, ", ")
+	voiceDesArr := []string{}
+	for _, v := range voices {
+		voiceDesArr = append(voiceDesArr, v.Name+"("+v.DisplayName+"-"+v.Sex+")："+v.Description)
+	}
+	voiceDes := strings.Join(voiceDesArr, ", ")
 
 	InputSchema := ToolInputSchema{
 		Type: "object",
@@ -154,24 +158,32 @@ func (c *LocalClient) AddToolPlayMusic() error {
 	InputSchema := ToolInputSchema{
 		Type: "object",
 		Properties: map[string]any{
+			"song_name": map[string]any{
+				"type":        "string",
+				"description": "明确要求播放的歌曲名称。如果没有可填空字符串",
+			},
 			"song_requirement": map[string]any{
 				"type":        "string",
-				"description": "歌曲要求，可包含具体歌曲名、歌手、音乐风格、场景、心情、乐器等信息。示例: ```用户:播放周杰伦的歌曲 参数：周杰伦的歌曲``` ```用户:播放适合放松的钢琴音乐 参数：放松的钢琴曲```",
+				"description": "歌曲要求信息，支持指定歌曲名、歌手、音乐风格、场景、心情、乐器等内容。示例：'周杰伦的歌曲' 或 '放松的钢琴曲'",
 			},
 		},
-		Required: []string{"song_requirement"},
+		Required: []string{"song_name", "song_requirement"},
 	}
 
 	c.AddTool("play_music",
-		"音乐播放工具。当用户想要播放指定歌曲时调用",
+		"音乐播放工具。用于根据用户提供的歌曲要求播放指定歌曲，适用于用户明确提出播放特定歌曲需求的场景。",
 		InputSchema,
 		func(ctx context.Context, args map[string]any) (interface{}, error) {
 			song_requirement := args["song_requirement"].(string)
+			song_name := args["song_name"].(string)
 			res := types.ActionResponse{
 				Action: types.ActionTypeCallHandler, // 动作类型
 				Result: types.ActionResponseCall{
 					FuncName: "mcp_handler_play_music", // 函数名
-					Args:     song_requirement,                // 函数参数
+					Args: map[string]string{
+						"song_name":        song_name,
+						"song_requirement": song_requirement,
+					}, // 函数参数
 				},
 			}
 			return res, nil
@@ -182,18 +194,18 @@ func (c *LocalClient) AddToolPlayMusic() error {
 		Properties: map[string]any{
 			"song_requirement": map[string]any{
 				"type":        "string",
-				"description": "歌曲要求，可包含具体歌曲名、歌手、音乐风格、场景、心情、乐器等信息。示例: ```用户:播放周杰伦的歌曲 参数：周杰伦的歌曲``` ```用户:播放适合放松的钢琴音乐 参数：放松的钢琴曲```",
+				"description": "歌曲要求信息，支持指定歌曲名、歌手、音乐风格、场景、心情、乐器等内容。示例：'周杰伦的歌曲' 或 '放松的钢琴曲'",
 			},
 			"song_num": map[string]any{
 				"type":        "int",
-				"description": "歌曲数量，默认返回3首",
+				"description": "歌曲数量，默认返回1首",
 			},
 		},
 		Required: []string{"song_requirement", "song_num"},
 	}
 
 	c.AddTool("search_music",
-		"音乐库搜索工具。当用户想要推荐歌曲/搜索歌曲时调用，会根据用户的要求搜索音乐库，返回符合要求的歌曲列表",
+		"音乐库搜索与推荐工具。用于根据用户需求搜索音乐库，并返回指定数量的匹配歌曲列表。适用于用户明确要求搜索或推荐歌曲的场景。",
 
 		InputSchemaSearch,
 		func(ctx context.Context, args map[string]any) (interface{}, error) {

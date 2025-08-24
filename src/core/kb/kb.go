@@ -7,21 +7,25 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/philippgille/chromem-go"
+	"xiaozhi-server-go/src/configs"
 )
 
 const (
 	// KBPath = "../../../music-kb"
 	KBPath              = "music-kb"
 	CollectionName      = "song"
-	SimilarityThreshold = 0.6
-	OllamaURL           = "http://127.0.0.1:11434/api"
+	SongNameSimilarityThreshold = 0.38
 )
 
 var gCtx context.Context
 var gDB *chromem.DB
 var gCollection *chromem.Collection
 
-func init() {
+func Load(config *configs.Config) {
+	load(config.LLM[config.SelectedModule["LLM"]].BaseURL, config.LLM[config.SelectedModule["LLM"]].APIKey, config.MusicService.EmbeddingModelName)
+}
+
+func load(baseUrl, apiKey, modelName string) {
 	gCtx = context.Background()
 
 	var err error
@@ -31,12 +35,7 @@ func init() {
 		panic(err)
 	}
 
-	// // 配置Ollama嵌入函数
-	// ollamaURL := OllamaURL
-	// embeddingModelName := "bge-m3:latest" // 嵌入模型
-	// embeddingFunc := chromem.NewEmbeddingFuncOllama(embeddingModelName, ollamaURL)
-
-	embeddingFunc := chromem.NewEmbeddingFuncOpenAICompat("https://dashscope.aliyuncs.com/compatible-mode/v1", "sk-e8690fae27c4479a8718f71ebe20177d", "text-embedding-v4", nil)
+	embeddingFunc := chromem.NewEmbeddingFuncOpenAICompat(baseUrl, apiKey, modelName, nil)
 
 	// 创建集合
 	gCollection = gDB.GetCollection(CollectionName, embeddingFunc)
@@ -86,11 +85,11 @@ func Search(query string, nResults int) ([]Song, error) {
 	return docs, nil
 }
 
-func IsSongExist(song string) bool {
-	res, err := gCollection.Query(gCtx, song, 1, nil, nil)
+func IsSongExist(songName string) bool {
+	res, err := gCollection.Query(gCtx, songName, 1, nil, nil)
 	if err != nil {
 		return false
 	}
 	fmt.Println("相似度:", res[0].Similarity)
-	return res[0].Similarity > SimilarityThreshold
+	return res[0].Similarity > SongNameSimilarityThreshold
 }

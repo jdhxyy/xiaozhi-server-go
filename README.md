@@ -40,6 +40,8 @@
 * [x] 支持语音控制播放音乐
 * [x] 支持单机部署服务
 * [x] 支持本地数据库 sqlite
+* [x] 支持coze工作流 
+* [x] 支持Docker部署
 * [x] 支持MySQL,PostgreSQL（商务版功能）
 * [x] 支持 MQTT 连接（商务版功能）
 * [x] 支持dify工作流 （商务版功能）
@@ -61,17 +63,8 @@
 
 ---
 
-### 2. 设置环境变量
 
-```bash
-cp .env.example .env
-```
-
-修改 `.env` 中的变量为你自己的值
-
----
-
-### 3. 配置 `.config.yaml`
+### 2. 配置 `.config.yaml`
 
 * 推荐复制一份 `config.yaml` 改名为 `.config.yaml`
 * 按需求配置模型、WebSocket、OTA 地址等字段
@@ -92,7 +85,9 @@ web:
 http://your-server-ip:8080/api/ota/
 ```
 
-> ESP32 固件内置 OTA 地址，确保该服务地址可用。
+> ESP32 固件内置 OTA 地址，确保该服务地址可用，服务运行后可以在浏览器中输出此地址，确认服务可以访问。
+
+ESP32设备可以在联网界面修改OTA地址，从而在不重新刷固件的情况下，切换后端服务。
 
 #### 配置ASR，LLM，TTS
 
@@ -123,7 +118,7 @@ cp config.yaml .config.yaml
 
 ### Windows 安装 Opus 编译环境
 
-安装 [MSYS2](https://www.msys2.org/)，然后：
+安装 [MSYS2](https://www.msys2.org/)，打开MYSY2 MINGW64控制台，然后输入以下命令：
 
 ```bash
 pacman -Syu
@@ -137,6 +132,10 @@ pacman -S mingw-w64-x86_64-pkg-config
 set PKG_CONFIG_PATH=C:\msys64\mingw64\lib\pkgconfig
 set CGO_ENABLED=1
 ```
+
+尽量在MINGW64环境下运行一次 “go run ./src/main.go” 命令，确保服务正常运行
+
+GO mod如果更新较慢，可以考虑设置go代理，切换国内镜像源。
 
 ---
 
@@ -174,13 +173,26 @@ swag init -g main.go
 
 ---
 
+## Docker 环境部署
+
+1. 准备`docker-compose.yml`,`.config.yaml`,二进制程序文件
+
+👉 [点击前往 Releases 页面](https://github.com/AnimeAIChat/xiaozhi-server-go/releases)下载二进制程序文件
+
+* 选择你平台对应的版本（默认使用 Liunx: `linux-amd64-server-upx`，如使用其他版本，需要修改docker-compose.yml）
+
+2. 三个文件放到同一目录下，配置`docker-compose.yml`,`.config.yaml`
+
+3. 运行`docker compose up -d`
+
+---
 
 ## 💬 社区支持
 
 
 欢迎提交 Issue、PR 或新功能建议！
 
-<img src="https://github.com/user-attachments/assets/9882b681-bf59-4e22-add9-e635696db423" width="450" alt="微信群二维码">
+<img src="https://github.com/user-attachments/assets/3b98c03f-2acb-41d9-8de8-8d7b6e1d99fe" width="450" alt="微信群二维码">
 
 ---
 

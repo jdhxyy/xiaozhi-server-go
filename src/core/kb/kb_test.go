@@ -101,7 +101,8 @@ func TestCase2(t *testing.T) {
 }
 
 func TestCase3(t *testing.T) {
-	docs, err := Search("中国风的歌曲", 10)
+	load("https://dashscope.aliyuncs.com/compatible-mode/v1", "sk-e8690fae27c4479a8718f71ebe20177d", "text-embedding-v4")
+	docs, err := Search("周杰伦的青花瓷", 10)
 	if err != nil {
 		t.Fatal(err)
 	}

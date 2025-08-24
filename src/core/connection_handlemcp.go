@@ -46,43 +46,75 @@ func (h *ConnectionHandler) handleMCPResultCall(result types.ActionResponse) {
 }
 
 func (h *ConnectionHandler) mcp_handler_play_music(args interface{}) {
-	if songRequirement, ok := args.(string); ok {
-		h.logger.Info("mcp_handler_play_music: %s", songRequirement)
-		songs, err := kb.Search(songRequirement, 10)
+	songName, ok1 := args.(map[string]string)["song_name"]
+	songRequirement, ok2 := args.(map[string]string)["song_requirement"]
+
+	if !ok1 && !ok2 {
+		h.logger.Error("mcp_handler_play_music: args songName and songRequirement is not a string")
+		h.SystemSpeak("没有找到歌曲" + songName)
+		return
+	}
+
+	songs := make([]kb.Song, 0)
+	if ok1 && songName != "" {
+		var err error
+		songs, err = kb.Search(songName, 1)
 		if err != nil || len(songs) == 0 {
-			h.logger.Error("mcp_handler_search_music: Search failed: %v", err)
-			h.SystemSpeak("搜索音乐失败")
+			h.logger.Error("mcp_handler_play_music: SearchSingle failed: %v", err)
+			h.SystemSpeak("搜索歌曲" + songName + "失败")
 			return
 		}
+	}
 
-		// 创建一个切片来存储所有找到的歌曲路径
-		var musicPaths []string
-		var musicNames []string
+	if !ok2 || songRequirement == "" {
+		if len(songs) > 0 {
+			songRequirement = songs[0].Artist
+		}
+	}
 
-		// 遍历所有搜索到的歌曲
-		for _, song := range songs {
-			h.logger.Info("搜索到的音乐有: %s", song.Title)
-			songName := song.Title
+	h.logger.Info("mcp_handler_play_music: %s %s", songName, songRequirement)
 
-			if path, name, err := utils.GetMusicFilePathFuzzy(songName); err != nil {
-				h.logger.Error("mcp_handler_play_music: Get path failed for %s: %v", songName, err)
-			} else {
-				// 将找到的路径添加到切片中
-				musicPaths = append(musicPaths, path)
-				musicNames = append(musicNames, name)
-			}
+	s, err := kb.Search(songRequirement, h.config.MusicService.MusicListNum)
+	if err != nil || len(s) == 0 {
+		h.logger.Error("mcp_handler_search_music: Search failed: %v", err)
+		h.SystemSpeak("搜索音乐失败")
+		return
+	}
+
+	for _, song := range s {
+		h.logger.Info("搜索到的音乐: %s", song.Title)
+		if song.Title == songs[0].Title {
+			continue
 		}
 
-		// 如果找到了至少一首歌曲的路径，则播放
-		if len(musicPaths) > 0 {
-			//h.SystemSpeak("这就为您播放找到的音乐")
-			h.sendMusic(musicPaths, musicNames, h.tts_last_text_index, h.talkRound)
+		songs = append(songs, song)
+	}
+
+	// 创建一个切片来存储所有找到的歌曲路径
+	var musicPaths []string
+	var musicNames []string
+
+	// 遍历所有搜索到的歌曲
+	for _, song := range songs {
+		h.logger.Info("准备播放的音乐: %s", song.Title)
+		songName := song.Title
+
+		if path, name, err := utils.GetMusicFilePathFuzzy(songName); err != nil {
+			h.logger.Error("mcp_handler_play_music: Get path failed for %s: %v", songName, err)
 		} else {
-			h.logger.Error("mcp_handler_play_music: No music paths found")
-			h.SystemSpeak("没有找到任何歌曲的播放路径")
+			// 将找到的路径添加到切片中
+			musicPaths = append(musicPaths, path)
+			musicNames = append(musicNames, name)
 		}
+	}
+
+	// 如果找到了至少一首歌曲的路径，则播放
+	if len(musicPaths) > 0 {
+		//h.SystemSpeak("这就为您播放找到的音乐")
+		h.sendMusic(musicPaths, musicNames, h.tts_last_text_index, h.talkRound)
 	} else {
-		h.logger.Error("mcp_handler_play_music: args is not a string")
+		h.logger.Error("mcp_handler_play_music: No music paths found")
+		h.SystemSpeak("没有找到任何歌曲的播放路径")
 	}
 }
 
